@@ -1,9 +1,11 @@
-﻿namespace Finbourne.MemoryCache
+﻿using System.Collections.Concurrent;
+
+namespace Finbourne.MemoryCache
 {
     public class MemoryCache : IMemoryCache
     {
         private readonly int _capacity;
-        private readonly Dictionary<object,  object> _keyAccessibleItems = [];
+        private readonly ConcurrentDictionary<object,  object> _keyAccessibleItems = [];
         private readonly LinkedList<object> _accessOrderedItems = [];
 
         public MemoryCache(int capacity = 0)
@@ -15,8 +17,7 @@
         {
             if (_keyAccessibleItems.TryGetValue(key, out var storedValue))
             {
-                _accessOrderedItems.Remove(key);
-                _accessOrderedItems.AddFirst(key);
+                SetMostRecentItem(key);
                 value = (T)storedValue;
                 return true;
             }
@@ -29,19 +30,51 @@
 
         public void Insert(object key, object value)
         {
-            if (IsAtMaxCapacity())
-            {
-                var item = _accessOrderedItems.Last;
-                _accessOrderedItems.Remove(item);
-                _keyAccessibleItems.Remove(item.Value);
-            }
+            EnsureCapacity();
             _accessOrderedItems.AddFirst(key);
             _keyAccessibleItems[key] = value;
         }
 
-        private bool IsAtMaxCapacity()
+        private void EnsureCapacity()
         {
-            return _capacity > 0 && _accessOrderedItems.Count == _capacity;
+            if (_capacity == 0) { return; }
+
+            if (_accessOrderedItems.Count < _capacity)
+            {
+                return;
+            }
+            var keyToEvict = TryGetKeyToEvict();
+            if (keyToEvict != null)
+            {
+                _keyAccessibleItems.Remove(keyToEvict, out _);
+            }
+        }
+
+        private object? TryGetKeyToEvict()
+        {
+            lock (_accessOrderedItems)
+            {
+                if (_accessOrderedItems.Count < _capacity) 
+                {
+                    return null;
+                };
+                var item = _accessOrderedItems.Last;
+                if (item == null) 
+                { 
+                    return null; 
+                }
+                _accessOrderedItems.Remove(item);
+                return item.Value;
+            }
+        }
+
+        private void SetMostRecentItem(object key)
+        {
+            lock (_accessOrderedItems)
+            {
+                _accessOrderedItems.Remove(key);
+                _accessOrderedItems.AddFirst(key);
+            }
         }
     }
 }
