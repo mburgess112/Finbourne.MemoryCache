@@ -18,7 +18,7 @@ namespace Finbourne.MemoryCache
         {
             if (_keyAccessibleItems.TryGetValue(key, out var storedNode))
             {
-                MoveToFirst(storedNode);
+                UpdateItemAccess(storedNode);
                 value = (T)storedNode.Value.Value;
                 return true;
             }
@@ -32,7 +32,7 @@ namespace Finbourne.MemoryCache
         public void Insert(object key, object value)
         {
             EnsureCapacity();
-            var newNode = CreateAtFirst(key, value);
+            var newNode = CreateItem(KeyValuePair.Create(key, value));
             _keyAccessibleItems[key] = newNode;
         }
 
@@ -44,45 +44,48 @@ namespace Finbourne.MemoryCache
             {
                 return;
             }
-            var keyToEvict = TryGetKeyToEvict();
-            if (keyToEvict != null)
+
+            if (TryGetItemToEvict(out var itemToEvict))
             {
-                _keyAccessibleItems.Remove(keyToEvict, out _);
+                _keyAccessibleItems.Remove(itemToEvict.Key, out _);
             }
         }
 
-        private object? TryGetKeyToEvict()
+        private LinkedListNode<KeyValuePair<object, object>> CreateItem(KeyValuePair<object, object> value)
         {
             lock (_accessOrderedItems)
             {
-                if (_accessOrderedItems.Count < _capacity) 
-                {
-                    return null;
-                };
-                var item = _accessOrderedItems.Last;
-                if (item == null) 
-                { 
-                    return null; 
-                }
-                _accessOrderedItems.Remove(item);
-                return item.Value.Key;
+                return _accessOrderedItems.AddFirst(value);
             }
         }
 
-        private LinkedListNode<KeyValuePair<object,object>> CreateAtFirst(object key, object value)
-        {
-            lock (_accessOrderedItems)
-            {
-                return _accessOrderedItems.AddFirst(KeyValuePair.Create(key, value));
-            }
-        }
-
-        private void MoveToFirst(LinkedListNode<KeyValuePair<object, object>> node)
+        private void UpdateItemAccess(LinkedListNode<KeyValuePair<object, object>> node)
         {
             lock (_accessOrderedItems)
             {
                 _accessOrderedItems.Remove(node);
                 _accessOrderedItems.AddFirst(node);
+            }
+        }
+
+        private bool TryGetItemToEvict(out KeyValuePair<object, object> itemToEvict)
+        {
+            lock (_accessOrderedItems)
+            {
+                if (_accessOrderedItems.Count < _capacity) 
+                {
+                    itemToEvict = default;
+                    return false;
+                };
+                var node = _accessOrderedItems.Last;
+                if (node == null) 
+                {
+                    itemToEvict = default;
+                    return false; 
+                }
+                _accessOrderedItems.Remove(node);
+                itemToEvict = node.Value;
+                return true;
             }
         }
     }
