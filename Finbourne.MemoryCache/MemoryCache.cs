@@ -1,12 +1,13 @@
 ﻿using System.Collections.Concurrent;
+using System.Xml.Linq;
 
 namespace Finbourne.MemoryCache
 {
     public class MemoryCache : IMemoryCache
     {
         private readonly int _capacity;
-        private readonly ConcurrentDictionary<object,  object> _keyAccessibleItems = [];
-        private readonly LinkedList<object> _accessOrderedItems = [];
+        private readonly ConcurrentDictionary<object, LinkedListNode<KeyValuePair<object, object>>> _keyAccessibleItems = [];
+        private readonly LinkedList<KeyValuePair<object, object>> _accessOrderedItems = [];
 
         public MemoryCache(int capacity = 0)
         {
@@ -15,10 +16,10 @@ namespace Finbourne.MemoryCache
 
         public bool TryGetValue<T>(object key, out T? value)
         {
-            if (_keyAccessibleItems.TryGetValue(key, out var storedValue))
+            if (_keyAccessibleItems.TryGetValue(key, out var storedNode))
             {
-                SetMostRecentItem(key);
-                value = (T)storedValue;
+                MoveToFirst(storedNode);
+                value = (T)storedNode.Value.Value;
                 return true;
             }
             else
@@ -31,8 +32,8 @@ namespace Finbourne.MemoryCache
         public void Insert(object key, object value)
         {
             EnsureCapacity();
-            SetMostRecentItem(key);
-            _keyAccessibleItems[key] = value;
+            var newNode = CreateAtFirst(key, value);
+            _keyAccessibleItems[key] = newNode;
         }
 
         private void EnsureCapacity()
@@ -64,16 +65,24 @@ namespace Finbourne.MemoryCache
                     return null; 
                 }
                 _accessOrderedItems.Remove(item);
-                return item.Value;
+                return item.Value.Key;
             }
         }
 
-        private void SetMostRecentItem(object key)
+        private LinkedListNode<KeyValuePair<object,object>> CreateAtFirst(object key, object value)
         {
             lock (_accessOrderedItems)
             {
-                _accessOrderedItems.Remove(key);
-                _accessOrderedItems.AddFirst(key);
+                return _accessOrderedItems.AddFirst(KeyValuePair.Create(key, value));
+            }
+        }
+
+        private void MoveToFirst(LinkedListNode<KeyValuePair<object, object>> node)
+        {
+            lock (_accessOrderedItems)
+            {
+                _accessOrderedItems.Remove(node);
+                _accessOrderedItems.AddFirst(node);
             }
         }
     }
