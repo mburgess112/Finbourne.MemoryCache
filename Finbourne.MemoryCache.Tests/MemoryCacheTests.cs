@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-
-namespace Finbourne.MemoryCache
+﻿namespace Finbourne.MemoryCache
 {
     public class MemoryCacheTests
     {

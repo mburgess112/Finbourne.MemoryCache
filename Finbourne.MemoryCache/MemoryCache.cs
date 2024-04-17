@@ -1,5 +1,4 @@
 ﻿using System.Collections.Concurrent;
-using System.Xml.Linq;
 
 namespace Finbourne.MemoryCache
 {
