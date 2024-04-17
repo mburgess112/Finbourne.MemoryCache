@@ -36,7 +36,7 @@
                 _keyAccessibleItems.Remove(item.Value);
             }
             _accessOrderedItems.AddFirst(key);
-            _keyAccessibleItems.Add(key, value);
+            _keyAccessibleItems[key] = value;
         }
 
         private bool IsAtMaxCapacity()

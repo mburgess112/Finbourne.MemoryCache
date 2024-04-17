@@ -1,4 +1,6 @@
-﻿namespace Finbourne.MemoryCache
+﻿using Newtonsoft.Json.Linq;
+
+namespace Finbourne.MemoryCache
 {
     public class MemoryCacheTests
     {
@@ -31,6 +33,18 @@
 
             cache.TryGetValue<string>(key, out var returnedValue);
             Assert.Equal(value, returnedValue);
+        }
+
+        [Fact]
+        public void InsertAndGet_MatchingKeyInsert_ReturnsUpdatedItem()
+        {
+            var cache = new MemoryCache();
+
+            cache.Insert("FirstKey", "FirstValue");
+            cache.Insert("FirstKey", "UpdatedValue");
+
+            cache.TryGetValue<string>("FirstKey", out var returnedValue);
+            Assert.Equal("UpdatedValue", returnedValue);
         }
 
         [Fact]
