@@ -2,12 +2,21 @@
 {
     public class MemoryCache : IMemoryCache
     {
-        private readonly Dictionary<object,  object> _cache = [];
+        private readonly int _capacity;
+        private readonly Dictionary<object,  object> _keyAccessibleItems = [];
+        private readonly LinkedList<object> _accessOrderedItems = [];
+
+        public MemoryCache(int capacity = 0)
+        {
+            _capacity = capacity;
+        }
 
         public bool TryGetValue<T>(object key, out T? value)
         {
-            if (_cache.TryGetValue(key, out var storedValue))
+            if (_keyAccessibleItems.TryGetValue(key, out var storedValue))
             {
+                _accessOrderedItems.Remove(key);
+                _accessOrderedItems.AddFirst(key);
                 value = (T)storedValue;
                 return true;
             }
@@ -20,7 +29,19 @@
 
         public void Insert(object key, object value)
         {
-            _cache.Add(key, value);
+            if (IsAtMaxCapacity())
+            {
+                var item = _accessOrderedItems.Last;
+                _accessOrderedItems.Remove(item);
+                _keyAccessibleItems.Remove(item.Value);
+            }
+            _accessOrderedItems.AddFirst(key);
+            _keyAccessibleItems.Add(key, value);
+        }
+
+        private bool IsAtMaxCapacity()
+        {
+            return _capacity > 0 && _accessOrderedItems.Count == _capacity;
         }
     }
 }

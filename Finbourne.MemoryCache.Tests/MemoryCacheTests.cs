@@ -64,5 +64,32 @@
             cache.Insert(key, value);
             Assert.Throws<InvalidCastException>(() => cache.TryGetValue<int>(key, out int value));
         }
+
+        [Fact]
+        public void InsertEviction_InsertedMaxItems_DoesNotReturnOldestItem()
+        {
+            var cache = new MemoryCache(2);
+
+            cache.Insert("FirstKey", "Value");
+            cache.Insert("SecondKey", "SecondValue");
+            cache.Insert("ThirdKey", "ThirdValue");
+
+            cache.TryGetValue<string>("FirstKey", out var value);
+            Assert.Null(value);
+        }
+
+        [Fact]
+        public void InsertEviction_InsertedMaxItems_ItemsAccessed_DoesNotReturnOldestItem()
+        {
+            var cache = new MemoryCache(2);
+
+            cache.Insert("FirstKey", "Value");
+            cache.Insert("SecondKey", "SecondValue");
+            cache.TryGetValue<string>("FirstKey", out _);
+            cache.Insert("ThirdKey", "ThirdValue");
+
+            cache.TryGetValue<string>("SecondKey", out var returnedValue);
+            Assert.Null(returnedValue);
+        }
     }
 }
