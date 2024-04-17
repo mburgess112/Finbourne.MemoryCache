@@ -31,24 +31,12 @@ namespace Finbourne.MemoryCache
 
         public void Insert(object key, object value)
         {
-            EnsureCapacity();
-            var newNode = CreateItem(KeyValuePair.Create(key, value));
-            _keyAccessibleItems[key] = newNode;
-        }
-
-        private void EnsureCapacity()
-        {
-            if (_capacity == 0) { return; }
-
-            if (_accessOrderedItems.Count < _capacity)
-            {
-                return;
-            }
-
             if (TryGetItemToEvict(out var itemToEvict))
             {
                 _keyAccessibleItems.Remove(itemToEvict.Key, out _);
             }
+            var newNode = CreateItem(KeyValuePair.Create(key, value));
+            _keyAccessibleItems[key] = newNode;
         }
 
         private LinkedListNode<KeyValuePair<object, object>> CreateItem(KeyValuePair<object, object> value)
@@ -70,17 +58,21 @@ namespace Finbourne.MemoryCache
 
         private bool TryGetItemToEvict(out KeyValuePair<object, object> itemToEvict)
         {
+            itemToEvict = default;
+            if (_capacity == 0 || _accessOrderedItems.Count < _capacity) 
+            { 
+                return false; 
+            }
+
             lock (_accessOrderedItems)
             {
                 if (_accessOrderedItems.Count < _capacity) 
                 {
-                    itemToEvict = default;
                     return false;
                 };
                 var node = _accessOrderedItems.Last;
                 if (node == null) 
                 {
-                    itemToEvict = default;
                     return false; 
                 }
                 _accessOrderedItems.Remove(node);
