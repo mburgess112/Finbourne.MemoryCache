@@ -31,7 +31,7 @@ namespace Finbourne.MemoryCache
         public void Insert(object key, object value)
         {
             EnsureCapacity();
-            _accessOrderedItems.AddFirst(key);
+            SetMostRecentItem(key);
             _keyAccessibleItems[key] = value;
         }
 
