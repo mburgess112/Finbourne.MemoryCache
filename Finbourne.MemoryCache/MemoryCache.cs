@@ -34,8 +34,17 @@ namespace Finbourne.MemoryCache
             {
                 _keyAccessibleItems.Remove(itemToEvict.Key, out _);
             }
-            var newNode = CreateItem(KeyValuePair.Create(key, value));
-            _keyAccessibleItems[key] = newNode;
+
+            var item = KeyValuePair.Create(key, value);
+            _keyAccessibleItems.AddOrUpdate(key,
+                _ => CreateItem(item),
+                (_, storedNode) =>
+                {
+                    UpdateItemAccess(storedNode);
+                    storedNode.Value = item;
+                    return storedNode;
+                }
+                );
         }
 
         private LinkedListNode<KeyValuePair<object, object>> CreateItem(KeyValuePair<object, object> value)
@@ -58,7 +67,7 @@ namespace Finbourne.MemoryCache
         private bool TryGetItemToEvict(out KeyValuePair<object, object> itemToEvict)
         {
             itemToEvict = default;
-            if (_capacity == 0 || _accessOrderedItems.Count < _capacity) 
+            if (_capacity == 0) 
             { 
                 return false; 
             }
